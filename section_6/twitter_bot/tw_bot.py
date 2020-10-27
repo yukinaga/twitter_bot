@@ -229,6 +229,7 @@ def reply_tweet(s_id):
         tweets = api.mentions_timeline(since_id=s_id)  # メンションを取得
     except tweepy.error.TweepError as e:
         print(e)
+        return
 
     for tweet in tweets:
         if tweet.user.screen_name == user_name:
