@@ -9,11 +9,10 @@ import re
 import os
 import sys
 import random
+import time
 import keys
 
 # ------ モデルの定義 ------
-
-
 class Encoder(nn.Module):
     def __init__(self, n_h, n_vocab, n_emb, num_layers=1, bidirectional=False, dropout=0.0):
         super().__init__()
@@ -178,7 +177,6 @@ seq2seq.load_state_dict(torch.load(
 # ------ 応答文の生成 ------
 j_tk = Tokenizer()
 
-
 def reply(inp_text, tokenizer, max_length=10):
     words = [tok for tok in tokenizer.tokenize(inp_text, wakati=True)]  # 分かち書き
 
@@ -208,7 +206,6 @@ def reply(inp_text, tokenizer, max_length=10):
 
     return rep_text
 
-
 # ------ Twitterの各設定 ------
 api_key = keys.api_key
 api_key_secret = keys.api_key_secret
@@ -219,28 +216,28 @@ auth = tweepy.OAuthHandler(api_key, api_key_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
-user_name = "Twitterのユーザー名"  # @を除いたTwitterのユーザー名
+user_name = "live_ai_exp"  # @を除いたTwitterのユーザー名
 
 # ------ 返答機能の実装 ------
-
-
-def reply_tweet(s_id):
+def reply_tweet(interval=600):
     try:
-        tweets = api.mentions_timeline(since_id=s_id)  # メンションを取得
+        tweets = api.mentions_timeline()  #メンションを取得
     except tweepy.error.TweepError as e:
         print(e)
         return
 
     for tweet in tweets:
-        if tweet.user.screen_name == user_name:
+        if tweet.user.screen_name==user_name:  # 自身からのメンションには応答しない
             continue
 
-        inp_text = re.sub(
-            r"https?://[\w/:%#\$&\?\(\)~\.=\+\-…]+", "", tweet.text)  # URLを削除
+        if tweet.created_at.timestamp() < time.time()-interval:  # 一定時間内のメンションのみに応答
+            continue
+
+        inp_text = re.sub(r"https?://[\w/:%#\$&\?\(\)~\.=\+\-…]+", "", tweet.text)  # URLを削除
         inp_text = re.sub("@[^\s]+", "", inp_text)  # @ユーザー名 を削除
 
         rep_text = reply(inp_text, j_tk, max_length=20)
-        if rep_text == "":
+        if rep_text=="":
             continue
         rep_text = "@" + tweet.user.screen_name + " " + rep_text
 
@@ -252,10 +249,6 @@ def reply_tweet(s_id):
             api.update_status(rep_text, tweet.id)  # 投稿
         except tweepy.error.TweepError as e:
             print(e)
-
-        s_id = tweet.id if tweet.id > s_id else s_id  # since_idを更新
-
-    return s_id  # 最新のメンションのidを返す
 
 
 # ------ Tweetの投稿 ------
@@ -284,15 +277,7 @@ def tweet(woeid):
 
 if __name__ == "__main__":
     if sys.argv[1] == "reply":
-        if os.path.exists("since_id.txt"):
-            with open("since_id.txt", "r") as f:
-                since_id = int(f.read())
-        else:
-            since_id = 1000000000000000000  # これ以降のツイートidを取得する
-
-        since_id = reply_tweet(since_id)
-        with open("since_id.txt", "w") as f:
-            f.write(str(since_id))
+        since_id = reply_tweet(interval=600)
     elif sys.argv[1] == "post":
         woeid = 23424856  # 日本を表すid
         tweet(woeid)
