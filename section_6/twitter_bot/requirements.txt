@@ -1,5 +1,4 @@
 numpy==1.18.5
-Pillow==7.1.2
 http://download.pytorch.org/whl/cpu/torch-1.6.0%2Bcpu-cp36-cp36m-linux_x86_64.whl
 torchtext==0.7.0
 janome==0.4.1
