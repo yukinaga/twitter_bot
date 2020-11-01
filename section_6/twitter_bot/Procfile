@@ -1,1 +1,2 @@
-clock: python tw_reply.py
+clock: python tw_bot.py reply
+clock: python tw_bot.py post
